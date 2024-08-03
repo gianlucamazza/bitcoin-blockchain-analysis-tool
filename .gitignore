@@ -1,0 +1,19 @@
+# Python compiled files
+__pycache__/
+*.py[cod]
+
+# Database files
+cache.db
+
+# Environment files
+.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Log files
+*.log
+
+# System-specific files
+.DS_Store
+Thumbs.db

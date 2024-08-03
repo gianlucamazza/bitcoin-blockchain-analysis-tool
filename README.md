@@ -10,6 +10,7 @@ The Bitcoin Blockchain Analysis Tool is a command-line interface (CLI) applicati
 - **Transaction Tracing**: Trace the flow of transactions for given addresses up to a specified depth.
 - **Block Analysis**: Analyze blocks for large transactions above a specified threshold.
 - **Detailed Reports**: Generate and save detailed analysis reports in JSON format.
+- **Local Database Cache**: Utilize a local SQLite database to cache API responses, improving performance and reducing redundant API calls.
 
 ## Installation
 
@@ -69,6 +70,10 @@ To save the analysis report to a file:
 ```bash
 python script_name.py --addresses address1 address2 --output report.json
 ```
+
+## Local Database Cache
+
+The tool uses a local SQLite database to cache API responses. This reduces the number of API calls, improves performance, and allows for offline analysis of previously fetched data.
 
 ## Logging
 
