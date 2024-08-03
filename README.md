@@ -71,10 +71,6 @@ To save the analysis report to a file:
 python script_name.py --addresses address1 address2 --output report.json
 ```
 
-## Local Database Cache
-
-The tool uses a local SQLite database to cache API responses. This reduces the number of API calls, improves performance, and allows for offline analysis of previously fetched data.
-
 ## Logging
 
 The tool uses Python's logging module to provide detailed logs of its operations. Logs are printed to the console to help trace the execution and identify any issues.

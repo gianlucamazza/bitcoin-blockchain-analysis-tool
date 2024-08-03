@@ -1,9 +1,11 @@
 # Python compiled files
+.venv/
 __pycache__/
 *.py[cod]
 
-# Database files
+# Database/Cache files
 cache.db
+cache/
 
 # Environment files
 .env

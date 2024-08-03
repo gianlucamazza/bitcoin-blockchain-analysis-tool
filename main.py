@@ -31,7 +31,6 @@ from typing import List, Dict, Any
 
 from analyzer import AddressAnalyzer
 from api_client import APIClient
-from database import initialize_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -164,9 +163,6 @@ def main():
     Main entry point for the script.
     Parses arguments and performs analysis based on the provided options.
     """
-    initialize_db()
-    logger.info("Database initialized.")
-
     args = parse_arguments()
     analyzer = AddressAnalyzer(APIClient())
     report = {"addresses": [], "transaction": None, "block": None}

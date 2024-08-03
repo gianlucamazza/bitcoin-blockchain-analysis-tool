@@ -2,51 +2,26 @@ import requests
 import json
 import time
 import logging
-import sqlite3
 from requests.exceptions import RequestException
+import diskcache as dc
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class APIClient:
-    def __init__(self, max_retries=3, retry_delay=3, db_file='cache.db'):
+    def __init__(self, max_retries=3, retry_delay=3, cache_dir='cache'):
         self.base_url = "https://blockstream.info/api"
         self.coingecko_url = "https://api.coingecko.com/api/v3"
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self.db_file = db_file
-        self.conn = self.create_connection(self.db_file)
-
-    def create_connection(self, db_file):
-        """ crea una connessione al database SQLite specificato dal db_file """
-        conn = None
-        try:
-            conn = sqlite3.connect(db_file)
-            return conn
-        except sqlite3.Error as e:
-            logger.error(e)
-        return conn
-
-    def get_cached_response(self, url):
-        """ recupera la risposta dalla cache se esiste """
-        cur = self.conn.cursor()
-        cur.execute("SELECT response FROM api_cache WHERE url=?", (url,))
-        row = cur.fetchone()
-        return row[0] if row else None
-
-    def cache_response(self, url, response):
-        """ memorizza la risposta nella cache """
-        cur = self.conn.cursor()
-        cur.execute("REPLACE INTO api_cache (url, response) VALUES (?, ?)", (url, response))
-        self.conn.commit()
+        self.cache = dc.Cache(cache_dir)
 
     def _make_request(self, url):
         # Check cache first
-        cached_response = self.get_cached_response(url)
-        if cached_response:
+        if url in self.cache:
             logger.info(f"Returning cached response for URL: {url}")
-            return json.loads(cached_response)
+            return self.cache[url]
 
         logger.info(f"Making request to URL: {url}")
         for attempt in range(self.max_retries):
@@ -55,7 +30,7 @@ class APIClient:
                 response.raise_for_status()  # Raise an exception for bad status codes
                 logger.info(f"Received response from {url}: {response.status_code}")
                 data = response.json()
-                self.cache_response(url, json.dumps(data))  # Store response in cache
+                self.cache[url] = data  # Store response in cache
                 return data
             except RequestException as e:
                 logger.error(f"Attempt {attempt + 1} failed. Error making request to {url}: {e}")
