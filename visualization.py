@@ -1,79 +1,119 @@
+import networkx as nx
 import matplotlib.pyplot as plt
+import pandas as pd
+import logging
+from typing import Any, Dict, List
 import networkx as nx
 
-def visualize_transaction_flow(G, txid, save_path=None):
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+def visualize_cluster(cluster_report: Dict[str, Any]) -> None:
     """
-    Visualize the transaction flow of a given transaction ID using a NetworkX graph.
+    Visualize the cluster of Bitcoin addresses.
 
     Args:
-        G (networkx.DiGraph): Directed graph representing the transaction flow.
-        txid (str): Transaction ID being visualized.
-        save_path (str, optional): Path to save the plot as an image. Defaults to None.
-
-    Returns:
-        None
+        cluster_report (Dict[str, Any]): The report containing the cluster information.
     """
-    pos = nx.spring_layout(G, k=0.5)
-    plt.figure(figsize=(14, 10))
-    
-    # Draw nodes
-    nx.draw_networkx_nodes(G, pos, node_color='skyblue', node_size=700, edgecolors='black')
-    
-    # Draw edges
-    nx.draw_networkx_edges(G, pos, arrowstyle='-|>', arrowsize=20, edge_color='gray')
-    
-    # Draw labels
-    nx.draw_networkx_labels(G, pos, font_size=10, font_color='black')
-    
-    # Draw edge labels
-    edge_labels = nx.get_edge_attributes(G, 'value')
-    formatted_edge_labels = {k: f'{v:.2f} BTC' for k, v in edge_labels.items()}
-    nx.draw_networkx_edge_labels(G, pos, edge_labels=formatted_edge_labels, font_color='red', font_size=8)
-    
-    plt.title(f"Transaction Flow: {txid}", fontsize=15)
-    plt.axis('off')
-    plt.tight_layout()
-    
-    if save_path:
-        plt.savefig(save_path)
-        print(f"Transaction flow plot saved to {save_path}")
-    
+    G = nx.Graph()
+
+    # Add nodes and edges based on the cluster information
+        # Add nodes and edges based on the cluster information
+    for address_info in cluster_report.get("addresses", []):
+        address = address_info.get("address")
+        if address:
+            G.add_node(address)
+            transactions_flow = address_info.get("transactions_flow", [])
+            for flow in transactions_flow:
+                for tx in flow:
+                    if isinstance(tx, dict):
+                        txid = tx.get("txid")
+                        if txid:
+                            G.add_node(txid)
+                            G.add_edge(address, txid)
+                            for output in tx.get("outputs", []):
+                                output_address = output.get("address")
+                                if output_address:
+                                    G.add_node(output_address)
+                                    G.add_edge(txid, output_address)
+
+    # Draw the graph
+    plt.figure(figsize=(12, 12))
+    pos = nx.spring_layout(G, k=0.3)
+    nx.draw(G, pos, with_labels=True, node_size=500, node_color="skyblue", font_size=8, font_weight="bold", edge_color="gray")
+    plt.title("Bitcoin Address Cluster")
     plt.show()
 
-def visualize_address_history(address, total_received, total_sent, current_balance, save_path=None):
+
+def plot_balance_over_time(address_info: Dict[str, Any]) -> None:
     """
-    Visualize the history of a Bitcoin address with a pie chart showing total received, total sent, and current balance.
+    Plot the balance of a Bitcoin address over time.
 
     Args:
-        address (str): Bitcoin address being visualized.
-        total_received (float): Total BTC received by the address.
-        total_sent (float): Total BTC sent from the address.
-        current_balance (float): Current BTC balance of the address.
-        save_path (str, optional): Path to save the plot as an image. Defaults to None.
-
-    Returns:
-        None
+        address_info (Dict[str, Any]): The address information containing transaction history.
     """
-    labels = ['Total Received (BTC)', 'Total Sent (BTC)', 'Current Balance (BTC)']
-    values = [total_received, total_sent, current_balance]
-    colors = ['#ff9999','#66b3ff','#99ff99']
-    
-    fig, ax = plt.subplots(figsize=(8, 8))
-    _, texts, autotexts = ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors, textprops=dict(color="w"))
-    
-    # Enhance the pie chart
-    for text in texts:
-        text.set_fontsize(12)
-    for autotext in autotexts:
-        autotext.set_fontsize(12)
-        autotext.set_color('black')
-    
-    ax.axis('equal')
-    plt.title(f'Bitcoin Address History for {address}', fontsize=15)
-    plt.tight_layout()
-    
-    if save_path:
-        fig.savefig(save_path)
-        print(f"Address history plot saved to {save_path}")
-    
+    if "address" not in address_info:
+        logger.error("Address information is missing 'address' key")
+        return
+
+    transactions = address_info.get("transactions_flow", [])
+    balance = 0
+    balance_history = []
+    timestamps = []
+
+    for tx in transactions:
+        tx_time = tx.get('time', 0)
+        for output in tx.get("outputs", []):
+            if output.get("address") == address_info["address"]:
+                balance += output.get("value", 0)
+        for input_tx in tx.get("inputs", []):
+            if input_tx.get("prevout", {}).get("scriptpubkey_address") == address_info["address"]:
+                balance -= input_tx.get("prevout", {}).get("value", 0)
+
+        balance_history.append(balance)
+        timestamps.append(pd.to_datetime(tx_time, unit='s'))
+
+    plt.figure(figsize=(10, 5))
+    plt.plot(timestamps, balance_history, label='Balance over time')
+    plt.xlabel('Time')
+    plt.ylabel('Balance (BTC)')
+    plt.title(f"Balance over time for {address_info['address']}")
+    plt.legend()
+    plt.show()
+
+
+def plot_transaction_values(transactions: List[Dict[str, Any]]) -> None:
+    """
+    Plot a histogram of transaction values.
+
+    Args:
+        transactions (List[Dict[str, Any]]): List of transactions.
+    """
+    values = []
+    for tx in transactions:
+        for output in tx.get("outputs", []):
+            values.append(output.get("value", 0))
+
+    plt.figure(figsize=(10, 5))
+    plt.hist(values, bins=50, log=True)
+    plt.xlabel('Transaction Value (BTC)')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Transaction Values')
+    plt.show()
+
+
+def plot_degree_distribution(G: nx.Graph) -> None:
+    """
+    Plot the degree distribution of the graph.
+
+    Args:
+        G (nx.Graph): The graph to plot the degree distribution for.
+    """
+    degrees = [G.degree(n) for n in G.nodes()]
+    plt.figure(figsize=(10, 5))
+    plt.hist(degrees, bins=50, log=True)
+    plt.xlabel('Degree')
+    plt.ylabel('Frequency')
+    plt.title('Degree Distribution')
     plt.show()

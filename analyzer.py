@@ -1,7 +1,6 @@
 import logging
 from typing import List, Set, Dict, Any, Optional
 from api_client import APIClient
-from visualization import visualize_address_history
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -84,39 +83,6 @@ class AddressAnalyzer:
         except (KeyError, TypeError) as e:
             logger.error(f"Error retrieving transactions for address {address}: {e}")
             return []
-
-    def analyze_history(self, address: str) -> None:
-        """
-        Analyze the transaction history of a Bitcoin address and visualize it.
-        
-        Parameters:
-        - address (str): The Bitcoin address to analyze.
-        """
-        try:
-            info = self.api_client.get_address_info(address)
-            if info is None:
-                logger.error(f"Unable to retrieve information for address: {address}")
-                return
-
-            chain_stats = info.get('chain_stats', {})
-            tx_count = chain_stats.get('tx_count', 0)
-
-            if (tx_count == 0):
-                logger.info(f"No transactions found for address: {address}")
-                return
-
-            logger.info(f"Transaction count for {address}: {tx_count}")
-            funded_txo_sum = chain_stats.get('funded_txo_sum', 0)
-            spent_txo_sum = chain_stats.get('spent_txo_sum', 0)
-            current_balance = (funded_txo_sum - spent_txo_sum) / 1e8
-
-            logger.info(f"Total received: {funded_txo_sum / 1e8:.8f} BTC")
-            logger.info(f"Total sent: {spent_txo_sum / 1e8:.8f} BTC")
-            logger.info(f"Current balance: {current_balance:.8f} BTC")
-
-            visualize_address_history(address, funded_txo_sum / 1e8, spent_txo_sum / 1e8, current_balance)
-        except (KeyError, TypeError) as e:
-            logger.error(f"Error analyzing history for address {address}: {e}")
 
     def analyze_wallet_cluster(self, addresses: List[str], depth: int = 2) -> None:
         """
